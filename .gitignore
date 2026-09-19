@@ -1,0 +1,26 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Generated research artifacts
+papers/
+metadata/
+extracted_text/
+chunks/
+embeddings/
+
+# Local tooling and test output
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
