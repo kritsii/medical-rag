@@ -1,7 +1,9 @@
 from pathlib import Path
+import argparse
 import json
 import os
 from dotenv import load_dotenv
+from groq import Groq
 from pinecone import Pinecone
 
 load_dotenv()
@@ -14,6 +16,25 @@ if not PINECONE_API_KEY:
     raise ValueError("Pinecone API key not found. Please set PINECONE_API_KEY in your environment variables.")
 pc = Pinecone(api_key=PINECONE_API_KEY)
 index = pc.Index("diabetes-rag")
+
+def get_groq_client():
+    """Create a Groq client using the key from the environment."""
+    groq_api_key = os.getenv("GROQ_API_KEY")
+    if not groq_api_key:
+        raise ValueError("Groq API key not found. Please set GROQ_API_KEY in your environment variables.")
+    return Groq(api_key=groq_api_key)
+
+def test_groq_completion():
+    """Send a minimal request to verify Groq API access."""
+    client = get_groq_client()
+    completion = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[{"role": "user", "content": "Respond with exactly: Groq connection works."}],
+        temperature=0,
+        max_tokens=32,
+    )
+    response = completion.choices[0].message.content
+    print(response or "Groq returned an empty response.")
 
 def upload_to_pinecone():
     """Upload embeddings to Pinecone in batches"""
@@ -66,4 +87,15 @@ def upload_to_pinecone():
     print("\n✓ Done")
 
 if __name__ == "__main__":
-    upload_to_pinecone()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--test-groq",
+        action="store_true",
+        help="Test Groq API access with a basic completion instead of uploading vectors.",
+    )
+    args = parser.parse_args()
+
+    if args.test_groq:
+        test_groq_completion()
+    else:
+        upload_to_pinecone()
