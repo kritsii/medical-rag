@@ -30,6 +30,7 @@ CITATIONS:
 llm = ChatGroq(
     model=os.getenv("GROQ_MODEL", "qwen/qwen3.8-27b"),
     temperature=0.2,
+    request_timeout=60,
     api_key=groq_api_key
 )
 

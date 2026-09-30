@@ -1,0 +1,6 @@
+python-dotenv>=1.0,<2
+langchain-core>=0.3,<2
+langchain-groq>=0.3,<2
+fastembed>=0.3,<1
+pinecone>=5,<8
+streamlit>=1.40,<2
