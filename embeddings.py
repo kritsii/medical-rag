@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 import json
-from sentence_transformers import SentenceTransformer
+from fastembed import TextEmbedding
 import numpy as np
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -9,7 +9,8 @@ CHUNKS_DIR = BASE_DIR / "chunks"
 EMBEDDINGS_DIR = BASE_DIR / "embeddings"
 EMBEDDINGS_DIR.mkdir(exist_ok=True)
 
-model = SentenceTransformer("all-MiniLM-L6-v2")
+# fastembed instead of sentence_transformers
+model = TextEmbedding("BAAI/bge-small-en-v1.5")
 
 def embed_chunks():
     """Embed all chunks and save vectors"""
@@ -27,7 +28,9 @@ def embed_chunks():
             data = json.load(f)
         
         chunks = data["chunks"]
-        embeddings = model.encode(chunks)
+        
+        # fastembed returns a generator, convert to list
+        embeddings = list(model.embed(chunks))
         
         # Prepare for Pinecone
         embeddings_data = []

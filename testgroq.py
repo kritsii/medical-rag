@@ -10,7 +10,7 @@ if not groq_api_key:
 client = Groq(api_key=groq_api_key)
 
 response = client.chat.completions.create(
-    model="mixtral-8x7b-32768",
+    model="qwen/qwen3.8-27b",
     messages=[{"role": "user", "content": "Say hello"}],
     max_tokens=100
 )

@@ -40,6 +40,7 @@ def query_pinecone(query_text: str, top_k: int = 5):
         chunks.append({
             'text': match['metadata'].get('text', ''),
             'title': match['metadata'].get('title', 'N/A'),
+            'doi': match['metadata'].get('doi', 'N/A'),
             'score': match['score']
         })
     

@@ -28,13 +28,27 @@ def test_groq_completion():
     """Send a minimal request to verify Groq API access."""
     client = get_groq_client()
     completion = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
+        model="qwen/qwen3.8-27b",
         messages=[{"role": "user", "content": "Respond with exactly: Groq connection works."}],
         temperature=0,
         max_tokens=32,
     )
     response = completion.choices[0].message.content
     print(response or "Groq returned an empty response.")
+
+def upload_new_vectors(vectors):
+    """Upload vectors whose IDs are not already present in the index."""
+    existing_ids = set()
+    vector_ids = [vector[0] for vector in vectors]
+    for start in range(0, len(vector_ids), 1000):
+        response = index.fetch(ids=vector_ids[start:start + 1000])
+        existing_ids.update(response.vectors.keys())
+
+    new_vectors = [vector for vector in vectors if vector[0] not in existing_ids]
+    if new_vectors:
+        index.upsert(vectors=new_vectors)
+
+    return len(new_vectors), len(vectors) - len(new_vectors)
 
 def upload_to_pinecone():
     """Upload embeddings to Pinecone in batches"""
@@ -44,6 +58,8 @@ def upload_to_pinecone():
     vectors = []
     batch_size = 100
     batch_count = 0
+    uploaded_count = 0
+    skipped_count = 0
     
     for i, embed_file in enumerate(embed_files):
         pmid = embed_file.stem.replace("_embeddings", "")
@@ -52,9 +68,9 @@ def upload_to_pinecone():
         with open(embed_file, "r") as f:
             embeddings_data = json.load(f)
         
-        meta_file = f"{METADATA_DIR}/{pmid}_metadata.json"
+        meta_file = METADATA_DIR / f"{pmid}_metadata.json"
         metadata = {}
-        if Path(meta_file).exists():
+        if meta_file.exists():
             with open(meta_file, "r") as f:
                 metadata = json.load(f)
         
@@ -65,26 +81,31 @@ def upload_to_pinecone():
                 {
                     "pmid": pmid,
                     "chunk_idx": item["chunk_idx"],
+                    "doi": metadata.get("doi", "NA"),
                     "text": item["text"][:500],  # Limit text size
                     "title": metadata.get("title", "")[:100]
                 }
             ))
-        
-        # Upsert every 100 vectors
-        if len(vectors) >= batch_size:
-            print(f"→ Batch {batch_count+1}")
-            index.upsert(vectors=vectors)
-            batch_count += 1
-            vectors = []
-        else:
+
+            if len(vectors) >= batch_size:
+                batch_count += 1
+                uploaded, skipped = upload_new_vectors(vectors)
+                uploaded_count += uploaded
+                skipped_count += skipped
+                print(f"→ Batch {batch_count}: uploaded {uploaded}, skipped {skipped} existing")
+                vectors = []
+        if len(vectors) < batch_size:
             print()
     
     # Upsert remaining vectors
     if vectors:
-        print(f"→ Batch {batch_count+1} (final)")
-        index.upsert(vectors=vectors)
+        batch_count += 1
+        uploaded, skipped = upload_new_vectors(vectors)
+        uploaded_count += uploaded
+        skipped_count += skipped
+        print(f"→ Batch {batch_count} (final): uploaded {uploaded}, skipped {skipped} existing")
     
-    print("\n✓ Done")
+    print(f"\n✓ Done: uploaded {uploaded_count}, skipped {skipped_count} vectors already in the index")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
